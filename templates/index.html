@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NewsHub Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+</head>
+<body>
+    <header>
+        <h1>NewsHub</h1>
+        <p>Aggregated headlines across trusted sources with deduplication and categorization.</p>
+    </header>
+    <section class="controls">
+        <input type="search" id="search" placeholder="Search headlines and summaries" />
+        <div class="filters">
+            <strong>Filter by category:</strong>
+            <label><input type="checkbox" value="all" checked /> All</label>
+            {% for category in categories %}
+            <label><input type="checkbox" value="{{ category }}" /> {{ category.title() }}</label>
+            {% endfor %}
+        </div>
+    </section>
+    <main id="stories">
+        {% for story in stories %}
+        <article class="story" data-categories="{{ story.categories | join(' ') }}">
+            <h2><a href="{{ story.url }}" target="_blank" rel="noopener noreferrer">{{ story.title }}</a></h2>
+            {% if story.published_at %}
+            <time>{{ story.published_at }}</time>
+            {% endif %}
+            <p class="summary">{{ story.summary }}</p>
+            <p class="meta">Sources: {{ story.sources | join(', ') }} | Categories: {{ story.categories | join(', ') }}</p>
+        </article>
+        {% else %}
+        <p class="empty">No stories available. Run the refresh script to fetch data.</p>
+        {% endfor %}
+    </main>
+    <script>
+        const searchInput = document.getElementById('search');
+        const storyElements = Array.from(document.querySelectorAll('.story'));
+        const filterInputs = Array.from(document.querySelectorAll('.filters input[type="checkbox"]'));
+
+        function applyFilters() {
+            const query = searchInput.value.toLowerCase();
+            const activeCategories = filterInputs
+                .filter(input => input.checked && input.value !== 'all')
+                .map(input => input.value);
+            const showAll = activeCategories.length === 0 || filterInputs.find(i => i.value === 'all' && i.checked);
+
+            storyElements.forEach(story => {
+                const text = story.innerText.toLowerCase();
+                const categories = story.dataset.categories.split(' ').filter(Boolean);
+                const matchesQuery = text.includes(query);
+                const matchesCategory = showAll || activeCategories.some(cat => categories.includes(cat));
+                story.style.display = matchesQuery && matchesCategory ? 'block' : 'none';
+            });
+        }
+
+        searchInput.addEventListener('input', applyFilters);
+        filterInputs.forEach(input => {
+            input.addEventListener('change', (event) => {
+                if (event.target.value === 'all') {
+                    filterInputs.forEach(box => {
+                        box.checked = box.value === 'all' ? event.target.checked : false;
+                    });
+                } else if (event.target.checked) {
+                    const allBox = filterInputs.find(box => box.value === 'all');
+                    if (allBox) allBox.checked = false;
+                }
+                applyFilters();
+            });
+        });
+    </script>
+</body>
+</html>
